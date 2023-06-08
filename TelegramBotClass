@@ -1,0 +1,131 @@
+package org.example;
+
+
+import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TimerTask;
+import java.util.Timer;
+import java.util.Timer;
+import java.util.TimeZone;
+
+public class TelegramBot11 extends TelegramLongPollingBot {
+    private Update currentUpdate;
+    private Map<Long, Boolean> userVerificationStatuses = new HashMap<>();
+
+    private BotState botState = BotState.IDLE;
+
+
+
+
+    private boolean isVerified(Long chatId) {
+        return userVerificationStatuses.getOrDefault(chatId, false);
+    }
+    private String pinCode = "your_pincode";
+
+    //метод за верификация към всеки потребител на бота
+    public void verifyCode(Update update) {
+        Long chatId = update.getMessage().getChatId();
+        String userCode = update.getMessage().getText();
+
+        if (userCode.equals(pinCode)) {
+            userVerificationStatuses.put(chatId, true);
+            String successMessage = "Кодът е валиден. Добре дошли!";
+            responseMessage(update, successMessage);
+            this.currentUpdate=update;
+            botState = BotState.VERIFIED;
+            Long chatId1 = currentUpdate.getMessage().getChatId();
+            Integer messageId = currentUpdate.getMessage().getMessageId();
+
+            deleteMessage(chatId1, Long.valueOf(messageId));
+
+        } else {
+            String errorMessage = "Грешен код. Моля, въведете 6-цифрен код от числа.";
+            responseMessage(update, errorMessage);
+        }
+    }
+
+
+    public void onUpdateReceived(Update update) {
+        Long chatId = update.getMessage().getChatId();
+
+        if (isVerified(chatId)) {
+            String command = update.getMessage().getText();
+            if (command.equals("/start")) {
+                String message = "hello";
+                responseMessage(update,message);
+                botState = BotState.STARTED;
+
+            } else if (command.equals("/stop")) {
+                String message = "bye";
+                responseMessage(update,message);
+                botState = BotState.STOPPED;
+            } else {
+                processCommand(command);
+            }
+        } else {
+            verifyCode(update);
+        }
+    }
+    private void responseMessage(Update update, String message) {
+        Long chatId = update.getMessage().getChatId();
+        SendMessage response = new SendMessage();
+        response.setChatId(chatId.toString());
+        response.setText(message);
+        try {
+            execute(response);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+      
+    private void processCommand(String command) {
+      
+        String responseMessage;
+        if (command.equals("/command1")) {
+            responseMessage = "Извършена е команда 1";
+        } else if (command.equals("/command2")) {
+            responseMessage = "Извършена е команда 2";
+        } else {
+            responseMessage = "Невалидна команда";
+        }
+        SendMessage response = new SendMessage();
+        response.setChatId(currentUpdate.getMessage().getChatId().toString());
+        response.setText(responseMessage);
+        try {
+            execute(response);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    
+    private void deleteMessage(Long chatId, Long messageId) {
+        // Изтриване на съобщение
+        DeleteMessage deleteMessage = new DeleteMessage();
+        deleteMessage.setChatId(chatId.toString());
+        deleteMessage.setMessageId(Math.toIntExact(messageId));
+        try {
+            execute(deleteMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+    @Override
+    public String getBotUsername() {
+        // TODO
+        return "username ";
+    }
+
+    @Override
+    public String getBotToken() {
+        // TODO
+        return "apitoken";
+    }
+
+}
